@@ -5,6 +5,7 @@ from flask_restful import Api
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import MetaData
 from flask_cors import CORS
+from flask_marshmallow import Marshmallow
 
 
 app = Flask(__name__)
@@ -24,4 +25,5 @@ db.init_app(app)
 
 bcrypt = Bcrypt(app)
 
+ma = Marshmallow(app)
 api = Api(app)

@@ -1,10 +1,11 @@
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy_serializer import SerializerMixin
 from sqlalchemy.orm import validates
+from sqlalchemy.exc import IntegrityError
 
 from config import db, bcrypt
 
-class User(db.Model, SerializerMixin):
+class User(db.Model):
     __tablename__ = 'users'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -32,7 +33,7 @@ class User(db.Model, SerializerMixin):
     def __repr__(self):
         return f'User {self.username}, ID: {self.id}'    
 
-class Recipe(db.Model, SerializerMixin):
+class Recipe(db.Model):
     __tablename__ = 'recipes'
     
     id = db.Column(db.Integer, primary_key=True)
