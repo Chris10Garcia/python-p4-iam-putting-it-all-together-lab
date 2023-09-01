@@ -2,20 +2,32 @@
 
 from flask import request, session, make_response, jsonify
 from flask_restful import Resource
-
+from marshmallow_sqlalchemy.fields import Nested
 from werkzeug import exceptions
 from sqlalchemy.exc import IntegrityError
 
 from config import app, db, api, ma
 from models import User, Recipe
 
-class UserSchema(ma.SQLAlchemyAutoSchema):
+class UserSchema(ma.SQLAlchemySchema):
     class Meta:
         model = User
         load_instance = True
+    id = ma.auto_field()
+    username = ma.auto_field()
+    image_url = ma.auto_field()
+    bio = ma.auto_field()    
+
+class RecipeSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = Recipe
+        load_instance = True
+    user = Nested(UserSchema)
 
 user_schema = UserSchema()
-users_schema = UserSchema(many=True)
+recipe_schema = RecipeSchema()
+recipe_many_schema = RecipeSchema(many=True)
+
 
 class Signup(Resource):
     def post(self):
@@ -152,18 +164,26 @@ class Logout(Resource):
     
 
 class RecipeIndex(Resource):
-    pass
+    def get(self):
+        if "user_id" in session:
+            recipes = Recipe.query.all()
+            response = make_response(
+                recipe_many_schema.dump(recipes),
+                200
+            )
+            return response
+        return {"errors" : ["No users are loged in"]}, 401
 
 
-@app.errorhandler(500)
-def server_issue(e):
-    response = make_response(
-        e,
-        500
-    )
-    return response
+# @app.errorhandler(500)
+# def server_issue(e):
+#     response = make_response(
+#         e,
+#         500
+#     )
+#     return response
 
-app.register_error_handler(500, server_issue)
+# app.register_error_handler(500, server_issue)
 api.add_resource(Signup, '/signup', endpoint='signup')
 api.add_resource(CheckSession, '/check_session', endpoint='check_session')
 api.add_resource(Login, '/login', endpoint='login')
