@@ -6,27 +6,28 @@ from marshmallow_sqlalchemy.fields import Nested
 from werkzeug import exceptions
 from sqlalchemy.exc import IntegrityError
 
-from config import app, db, api, ma
+from config import app, db, api
+# from config import app, db, api, ma
 from models import User, Recipe
 
-class UserSchema(ma.SQLAlchemySchema):
-    class Meta:
-        model = User
-        load_instance = True
-    id = ma.auto_field()
-    username = ma.auto_field()
-    image_url = ma.auto_field()
-    bio = ma.auto_field()    
+# class UserSchema(ma.SQLAlchemySchema):
+#     class Meta:
+#         model = User
+#         load_instance = True
+#     id = ma.auto_field()
+#     username = ma.auto_field()
+#     image_url = ma.auto_field()
+#     bio = ma.auto_field()    
 
-class RecipeSchema(ma.SQLAlchemyAutoSchema):
-    class Meta:
-        model = Recipe
-        load_instance = True
-    user = Nested(UserSchema)
+# class RecipeSchema(ma.SQLAlchemyAutoSchema):
+#     class Meta:
+#         model = Recipe
+#         load_instance = True
+#     user = Nested(UserSchema)
 
-user_schema = UserSchema()
-recipe_schema = RecipeSchema()
-recipe_many_schema = RecipeSchema(many=True)
+# user_schema = UserSchema()
+# recipe_schema = RecipeSchema()
+# recipe_many_schema = RecipeSchema(many=True)
 
 
 class Signup(Resource):
@@ -94,7 +95,8 @@ class Signup(Resource):
 
         session["user_id"] = user.id
         response = make_response(
-            jsonify(user_schema.dump(user)),
+            # jsonify(user_schema.dump(user)),
+            jsonify(user.to_dict()),
             201
         )
         return response
@@ -105,7 +107,8 @@ class CheckSession(Resource):
             user_id = session["user_id"]
             if user_id:
                 user = User.query.filter(User.id == user_id).first()
-                return user_schema.dump(user), 200
+                # return user_schema.dump(user), 200
+                return user.to_dict(), 200  
         return {}, 401
 
 class Login(Resource):
@@ -149,7 +152,8 @@ class Login(Resource):
 
         session["user_id"] = user.id
         response = make_response(
-            user_schema.dump(user),
+            # user_schema.dump(user),
+            jsonify(user.to_dict()),
             200
         )
         return response
@@ -166,15 +170,50 @@ class Logout(Resource):
 class RecipeIndex(Resource):
     def get(self):
         if "user_id" in session:
-            recipes = Recipe.query.all()
+            recipes = [recipe.to_dict() for recipe in Recipe.query.all()]
             response = make_response(
-                recipe_many_schema.dump(recipes),
+                # recipe_many_schema.dump(recipes),
+                jsonify(recipes),
                 200
             )
             return response
         return {"errors" : ["No users are loged in"]}, 401
+    
+    def post(self):
+        issues = {"errors" : []}
+        if "user_id" not in session:
+            issues["errors"].append("Please log in before submitting recipes")
+            return make_response(issues, 401)
 
+        user_data = request.get_json()
 
+        if "title" in user_data:
+            if user_data["title"] == "":
+                issues["errors"].append("Title is missing")
+        else:
+            issues["errors"].append("Title is missing")
+
+        if "instructions" in user_data:
+            if user_data["instructions"] == "":
+                issues["errors"].append("Instructions are missing")
+        else:
+            issues["instructions"].append("Instructions are missing")
+
+        if "minutes_to_complete" in user_data:
+            if user_data["minutes_to_complete"] == "":
+                issues["errors"].append("Minutes to complete recipe is missing")
+        else:
+            issues["errors"].append("Minutes to complete recipe is missing")
+        
+
+        if len(issues["errors"]) > 0:
+            response = make_response(
+                jsonify(issues), 
+                422
+            )
+            return response
+        
+        
 # @app.errorhandler(500)
 # def server_issue(e):
 #     response = make_response(
