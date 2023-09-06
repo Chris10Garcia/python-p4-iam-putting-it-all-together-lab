@@ -26,5 +26,5 @@ db.init_app(app)
 
 bcrypt = Bcrypt(app)
 
-# ma = Marshmallow(app)
+ma = Marshmallow(app)
 api = Api(app)

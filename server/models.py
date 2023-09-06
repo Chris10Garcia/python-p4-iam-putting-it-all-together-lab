@@ -6,8 +6,8 @@ from sqlalchemy.exc import IntegrityError
 
 from config import db, bcrypt
 
-class User(db.Model, SerializerMixin):
-# class User(db.Model):
+# class User(db.Model, SerializerMixin):
+class User(db.Model):
     __tablename__ = 'users'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -17,7 +17,7 @@ class User(db.Model, SerializerMixin):
     bio = db.Column(db.String)
 
     recipes = db.relationship('Recipe', backref='user')
-    serialize_rules = ('-recipes.user',)
+    # serialize_rules = ('-recipes.user',)
 
 
     @hybrid_property
@@ -37,8 +37,8 @@ class User(db.Model, SerializerMixin):
     def __repr__(self):
         return f'User {self.username}, ID: {self.id}'    
 
-class Recipe(db.Model, SerializerMixin):
-# class Recipe(db.Model):
+# class Recipe(db.Model, SerializerMixin):
+class Recipe(db.Model):
     __tablename__ = 'recipes'
     
     id = db.Column(db.Integer, primary_key=True)
@@ -47,7 +47,7 @@ class Recipe(db.Model, SerializerMixin):
     minutes_to_complete = db.Column(db.Integer)
 
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
-    serialize_rules = ('-user.recipes',)
+    # serialize_rules = ('-user.recipes',)
 
     __table_args__ = (
         db.CheckConstraint('LENGTH(instructions) >= 50'),

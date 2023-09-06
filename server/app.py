@@ -6,29 +6,37 @@ from marshmallow_sqlalchemy.fields import Nested
 from werkzeug import exceptions
 from sqlalchemy.exc import IntegrityError
 
-from config import app, db, api
-# from config import app, db, api, ma
+# from config import app, db, api
+from config import app, db, api, ma
 from models import User, Recipe
 
-# class UserSchema(ma.SQLAlchemySchema):
-#     class Meta:
-#         model = User
-#         load_instance = True
-#     id = ma.auto_field()
-#     username = ma.auto_field()
-#     image_url = ma.auto_field()
-#     bio = ma.auto_field()    
+class UserSchema(ma.SQLAlchemySchema):
+    class Meta:
+        model = User
+        load_instance = True
+    id = ma.auto_field()
+    username = ma.auto_field()
+    image_url = ma.auto_field()
+    bio = ma.auto_field()    
 
-# class RecipeSchema(ma.SQLAlchemyAutoSchema):
-#     class Meta:
-#         model = Recipe
-#         load_instance = True
-#     user = Nested(UserSchema)
+class RecipeSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = Recipe
+        load_instance = True
+    user = Nested(UserSchema)
 
-# user_schema = UserSchema()
-# recipe_schema = RecipeSchema()
-# recipe_many_schema = RecipeSchema(many=True)
+user_schema = UserSchema()
+recipe_schema = RecipeSchema()
+recipe_many_schema = RecipeSchema(many=True)
 
+class ClearSession(Resource):
+    def get(self):
+        if "user_id" in session:
+            session["user_id"] = None
+            response = make_response(
+                {}, 204
+            )
+            return response
 
 class Signup(Resource):
     def post(self):
@@ -95,8 +103,8 @@ class Signup(Resource):
 
         session["user_id"] = user.id
         response = make_response(
-            # jsonify(user_schema.dump(user)),
-            jsonify(user.to_dict()),
+            jsonify(user_schema.dump(user)),
+            # jsonify(user.to_dict()),
             201
         )
         return response
@@ -105,10 +113,11 @@ class CheckSession(Resource):
     def get(self):
         if "user_id" in session:
             user_id = session["user_id"]
+            print(user_id)
             if user_id:
                 user = User.query.filter(User.id == user_id).first()
-                # return user_schema.dump(user), 200
-                return user.to_dict(), 200  
+                return user_schema.dump(user), 200
+                # return user.to_dict(), 200  
         return {}, 401
 
 class Login(Resource):
@@ -152,8 +161,8 @@ class Login(Resource):
 
         session["user_id"] = user.id
         response = make_response(
-            # user_schema.dump(user),
-            jsonify(user.to_dict()),
+            user_schema.dump(user),
+            # jsonify(user.to_dict()),
             200
         )
         return response
@@ -170,13 +179,15 @@ class Logout(Resource):
 class RecipeIndex(Resource):
     def get(self):
         if "user_id" in session:
-            recipes = [recipe.to_dict() for recipe in Recipe.query.all()]
-            response = make_response(
-                # recipe_many_schema.dump(recipes),
-                jsonify(recipes),
-                200
-            )
-            return response
+            # recipes = [recipe.to_dict() for recipe in Recipe.query.all()]
+            if session["user_id"] != "" and session["user_id"] != None:
+                recipes = Recipe.query.all()
+                response = make_response(
+                    recipe_many_schema.dump(recipes),
+                    # jsonify(recipes),
+                    200
+                )
+                return response
         return {"errors" : ["No users are loged in"]}, 401
     
     def post(self):
@@ -184,6 +195,10 @@ class RecipeIndex(Resource):
         if "user_id" not in session:
             issues["errors"].append("Please log in before submitting recipes")
             return make_response(issues, 401)
+        elif session["user_id"] == "":
+            issues["errors"].append("Please log in before submitting recipes")
+            return make_response(issues, 401)            
+    
 
         user_data = request.get_json()
 
@@ -212,8 +227,17 @@ class RecipeIndex(Resource):
                 422
             )
             return response
-        
-        
+        user_data["user_id"] = session["user_id"]
+        new_recipe = Recipe(**user_data)
+        db.session.add(new_recipe)
+        db.session.commit()
+
+        response = make_response(
+            recipe_schema.dump(new_recipe),
+            201
+        )
+
+        return response
 # @app.errorhandler(500)
 # def server_issue(e):
 #     response = make_response(
@@ -223,6 +247,7 @@ class RecipeIndex(Resource):
 #     return response
 
 # app.register_error_handler(500, server_issue)
+api.add_resource(ClearSession, '/clear', endpoint='clear')
 api.add_resource(Signup, '/signup', endpoint='signup')
 api.add_resource(CheckSession, '/check_session', endpoint='check_session')
 api.add_resource(Login, '/login', endpoint='login')
